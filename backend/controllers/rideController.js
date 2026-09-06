@@ -112,3 +112,27 @@ export const cancelRide = async (req, res) => {
     });
   }
 };
+
+export const getAvailableRides = async (req, res) => {
+  try {
+    const rides = await Ride.find({
+      status: "SEARCHING",
+      rider: null,
+    })
+      .populate("customer", "name phone profilePhoto")
+      .sort({ requestedAt: -1 });
+
+    res.json({
+      success: true,
+      count: rides.length,
+      rides,
+    });
+  } catch (error) {
+    console.error("Get available rides error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to get available rides",
+    });
+  }
+};
