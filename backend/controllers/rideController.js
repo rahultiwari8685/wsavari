@@ -1,12 +1,40 @@
 import Ride from "../models/Ride.js";
 
+// export const createRide = async (req, res) => {
+//   try {
+//     const { customer, pickup, destination, vehicleType, estimatedFare } =
+//       req.body;
+
+//     const ride = await Ride.create({
+//       customer,
+//       pickup,
+//       destination,
+//       vehicleType,
+//       estimatedFare,
+//       status: "SEARCHING",
+//     });
+
+//     res.status(201).json({
+//       success: true,
+//       message: "Ride request created",
+//       ride,
+//     });
+//   } catch (error) {
+//     console.error("Create ride error:", error);
+
+//     res.status(500).json({
+//       success: false,
+//       message: "Failed to create ride",
+//     });
+//   }
+// };
+
 export const createRide = async (req, res) => {
   try {
-    const { customer, pickup, destination, vehicleType, estimatedFare } =
-      req.body;
+    const { pickup, destination, vehicleType, estimatedFare } = req.body;
 
     const ride = await Ride.create({
-      customer,
+      customer: req.user._id,
       pickup,
       destination,
       vehicleType,
@@ -28,7 +56,6 @@ export const createRide = async (req, res) => {
     });
   }
 };
-
 export const getRide = async (req, res) => {
   try {
     const ride = await Ride.findById(req.params.id)
