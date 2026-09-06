@@ -32,7 +32,6 @@ const userSchema = new mongoose.Schema(
         type: String,
         default: "",
       },
-
       phone: {
         type: String,
         default: "",
@@ -60,7 +59,6 @@ const userSchema = new mongoose.Schema(
         type: Number,
         default: null,
       },
-
       longitude: {
         type: Number,
         default: null,
