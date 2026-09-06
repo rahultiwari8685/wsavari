@@ -1,9 +1,10 @@
-const express = require("express");
-const cors = require("cors");
-const dotenv = require("dotenv");
+import express from "express";
+import cors from "cors";
+import dotenv from "dotenv";
 
-const connectDB = require("./config/db");
-const authRoutes = require("./routes/authRoutes");
+import connectDB from "./config/db.js";
+import authRoutes from "./routes/authRoutes.js";
+import rideRoutes from "./routes/rideRoutes.js";
 dotenv.config();
 
 connectDB();
@@ -13,7 +14,7 @@ const app = express();
 app.use(cors());
 
 app.use(express.json());
-app.use("/api/auth", authRoutes);
+app.use("/api/rides", rideRoutes);
 app.get("/", (req, res) => {
   res.json({
     success: true,
@@ -27,6 +28,8 @@ app.get("/api/health", (req, res) => {
     message: "Women Savari backend is healthy",
   });
 });
+
+app.use("/api/auth", authRoutes);
 
 const PORT = process.env.PORT || 5000;
 
