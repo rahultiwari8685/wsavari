@@ -7,14 +7,15 @@ import {
   getAvailableRides,
 } from "../controllers/rideController.js";
 
-import { protect } from "../middleware/authMiddleware.js";
-
 const router = express.Router();
 
-router.post("/", protect, createRide);
-
-router.get("/:id", protect, getRide);
-
-router.put("/:id/cancel", protect, cancelRide);
+// IMPORTANT: static routes must come before /:id
 router.get("/available", getAvailableRides);
+
+router.post("/", createRide);
+
+router.get("/:id", getRide);
+
+router.put("/:id/cancel", cancelRide);
+
 export default router;
