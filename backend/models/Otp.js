@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
 
 const otpSchema = new mongoose.Schema(
   {
@@ -28,4 +28,4 @@ const otpSchema = new mongoose.Schema(
   },
 );
 
-module.exports = mongoose.model("Otp", otpSchema);
+export default mongoose.model("Otp", otpSchema);
