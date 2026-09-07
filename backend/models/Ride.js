@@ -4,14 +4,13 @@ const rideSchema = new mongoose.Schema(
   {
     customer: {
       type: mongoose.Schema.Types.ObjectId,
-
       ref: "User",
       required: true,
     },
 
-    rider: {
+    partner: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+      ref: "Partner",
       default: null,
     },
 
@@ -19,11 +18,14 @@ const rideSchema = new mongoose.Schema(
       address: {
         type: String,
         required: true,
+        trim: true,
       },
+
       latitude: {
         type: Number,
         required: true,
       },
+
       longitude: {
         type: Number,
         required: true,
@@ -34,11 +36,14 @@ const rideSchema = new mongoose.Schema(
       address: {
         type: String,
         required: true,
+        trim: true,
       },
+
       latitude: {
         type: Number,
         required: true,
       },
+
       longitude: {
         type: Number,
         required: true,
@@ -47,12 +52,14 @@ const rideSchema = new mongoose.Schema(
 
     vehicleType: {
       type: String,
+      enum: ["bike", "scooter", "auto", "car"],
       default: "bike",
     },
 
     estimatedFare: {
       type: Number,
       required: true,
+      min: 0,
     },
 
     status: {
