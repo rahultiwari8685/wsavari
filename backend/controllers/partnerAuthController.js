@@ -64,7 +64,7 @@ export const sendPartnerOtp = async (req, res) => {
 
 export const verifyPartnerOtp = async (req, res) => {
   try {
-    const { phone, otp, name, vehicleType, vehicleNumber, licenseNumber } =
+    const { phone, otp, name, vehicleType, vehicleNumber, drivingLicense } =
       req.body;
 
     if (!phone || !otp) {
@@ -88,9 +88,7 @@ export const verifyPartnerOtp = async (req, res) => {
     }
 
     if (otpRecord.expiresAt < new Date()) {
-      await Otp.deleteOne({
-        _id: otpRecord._id,
-      });
+      await Otp.deleteOne({ _id: otpRecord._id });
 
       return res.status(400).json({
         success: false,
@@ -99,9 +97,7 @@ export const verifyPartnerOtp = async (req, res) => {
     }
 
     if (otpRecord.attempts >= 5) {
-      await Otp.deleteOne({
-        _id: otpRecord._id,
-      });
+      await Otp.deleteOne({ _id: otpRecord._id });
 
       return res.status(429).json({
         success: false,
@@ -119,6 +115,7 @@ export const verifyPartnerOtp = async (req, res) => {
       });
     }
 
+    // Find or create user
     let user = await User.findOne({
       phone: cleanPhone,
     });
@@ -141,10 +138,12 @@ export const verifyPartnerOtp = async (req, res) => {
       await user.save();
     }
 
+    // Find existing partner profile
     let partner = await Partner.findOne({
       user: user._id,
     });
 
+    // Create partner profile for first-time partner
     if (!partner) {
       if (!name || !vehicleType || !vehicleNumber) {
         return res.status(400).json({
@@ -156,14 +155,15 @@ export const verifyPartnerOtp = async (req, res) => {
 
       partner = await Partner.create({
         user: user._id,
-        name,
-        phone: cleanPhone,
         vehicleType,
         vehicleNumber,
-        licenseNumber: licenseNumber || "",
-        isApproved: false,
+        drivingLicense: drivingLicense || "",
+        status: "PENDING",
         isOnline: false,
-        isAvailable: false,
+        currentLocation: {
+          latitude: null,
+          longitude: null,
+        },
       });
     }
 
@@ -173,18 +173,28 @@ export const verifyPartnerOtp = async (req, res) => {
 
     const token = generateToken(user, partner);
 
-    res.json({
+    return res.json({
       success: true,
-      message: partner.isApproved
-        ? "Partner login successful"
-        : "Partner registration successful. Waiting for approval.",
+      message:
+        partner.status === "APPROVED"
+          ? "Partner login successful"
+          : "Partner registration successful. Waiting for approval.",
       token,
-      partner,
+      partner: {
+        _id: partner._id,
+        user: partner.user,
+        vehicleType: partner.vehicleType,
+        vehicleNumber: partner.vehicleNumber,
+        drivingLicense: partner.drivingLicense,
+        status: partner.status,
+        isOnline: partner.isOnline,
+        currentLocation: partner.currentLocation,
+      },
     });
   } catch (error) {
     console.error("Verify partner OTP error:", error);
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "Failed to verify partner OTP",
     });
