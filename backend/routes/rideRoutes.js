@@ -10,7 +10,7 @@ import {
   completeRide,
 } from "../controllers/rideController.js";
 
-import { auth } from "../middleware/authMiddleware.js";
+import { protect } from "../middleware/authMiddleware.js";
 import { partnerAuth } from "../middleware/partnerAuth.js";
 
 const router = express.Router();
@@ -22,10 +22,10 @@ const router = express.Router();
 */
 
 // Create ride
-router.post("/", auth, createRide);
+router.post("/", protect, createRide);
 
 // Cancel ride
-router.put("/:id/cancel", auth, cancelRide);
+router.put("/:id/cancel", protect, cancelRide);
 
 /*
 |--------------------------------------------------------------------------
@@ -52,6 +52,6 @@ router.post("/:id/complete", partnerAuth, completeRide);
 */
 
 // Get single ride
-router.get("/:id", auth, getRide);
+router.get("/:id", protect, getRide);
 
 export default router;
