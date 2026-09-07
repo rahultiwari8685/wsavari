@@ -10,7 +10,7 @@ import {
   completeRide,
 } from "../controllers/rideController.js";
 
-import { auth } from "../middleware/auth.js";
+import { auth } from "../middleware/authMiddleware.js";
 import { partnerAuth } from "../middleware/partnerAuth.js";
 
 const router = express.Router();
