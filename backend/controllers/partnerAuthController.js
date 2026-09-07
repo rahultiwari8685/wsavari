@@ -124,7 +124,7 @@ export const verifyPartnerOtp = async (req, res) => {
       user = await User.create({
         phone: cleanPhone,
         name: name || "",
-        role: "rider",
+        role: "customer",
         isVerified: true,
         isActive: true,
       });
