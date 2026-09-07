@@ -17,10 +17,11 @@ export const createRide = async (req, res) => {
 
     const { pickup, destination, vehicleType, estimatedFare } = req.body;
 
-    if (!pickup || !destination || !vehicleType) {
+    if (!pickup || !destination || !vehicleType || estimatedFare == null) {
       return res.status(400).json({
         success: false,
-        message: "Pickup, destination and vehicle type are required",
+        message:
+          "Pickup, destination, vehicle type and estimated fare are required",
       });
     }
 
@@ -30,10 +31,11 @@ export const createRide = async (req, res) => {
       destination,
       vehicleType,
       estimatedFare,
+      partner: null,
       status: "SEARCHING",
     });
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       message: "Ride request created",
       ride,
@@ -41,7 +43,7 @@ export const createRide = async (req, res) => {
   } catch (error) {
     console.error("Create ride error:", error);
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "Failed to create ride",
     });
@@ -58,7 +60,13 @@ export const getRide = async (req, res) => {
   try {
     const ride = await Ride.findById(req.params.id)
       .populate("customer", "name phone profilePhoto")
-      .populate("partner");
+      .populate({
+        path: "partner",
+        populate: {
+          path: "user",
+          select: "name phone profilePhoto",
+        },
+      });
 
     if (!ride) {
       return res.status(404).json({
@@ -67,14 +75,14 @@ export const getRide = async (req, res) => {
       });
     }
 
-    res.json({
+    return res.json({
       success: true,
       ride,
     });
   } catch (error) {
     console.error("Get ride error:", error);
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "Failed to get ride",
     });
@@ -105,10 +113,17 @@ export const cancelRide = async (req, res) => {
       });
     }
 
-    if (ride.status === "COMPLETED" || ride.status === "CANCELLED") {
+    if (ride.status === "COMPLETED") {
       return res.status(400).json({
         success: false,
-        message: `Ride is already ${ride.status.toLowerCase()}`,
+        message: "Completed ride cannot be cancelled",
+      });
+    }
+
+    if (ride.status === "CANCELLED") {
+      return res.status(400).json({
+        success: false,
+        message: "Ride is already cancelled",
       });
     }
 
@@ -116,7 +131,7 @@ export const cancelRide = async (req, res) => {
 
     await ride.save();
 
-    res.json({
+    return res.json({
       success: true,
       message: "Ride cancelled",
       ride,
@@ -124,7 +139,7 @@ export const cancelRide = async (req, res) => {
   } catch (error) {
     console.error("Cancel ride error:", error);
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "Failed to cancel ride",
     });
@@ -139,14 +154,29 @@ export const cancelRide = async (req, res) => {
 
 export const getAvailableRides = async (req, res) => {
   try {
+    if (req.partner.status !== "APPROVED") {
+      return res.status(403).json({
+        success: false,
+        message: "Partner account is not approved",
+      });
+    }
+
+    if (!req.partner.isOnline) {
+      return res.status(400).json({
+        success: false,
+        message: "Partner is offline",
+      });
+    }
+
     const rides = await Ride.find({
       status: "SEARCHING",
       partner: null,
+      vehicleType: req.partner.vehicleType,
     })
       .populate("customer", "name phone profilePhoto")
       .sort({ requestedAt: -1 });
 
-    res.json({
+    return res.json({
       success: true,
       count: rides.length,
       rides,
@@ -154,7 +184,7 @@ export const getAvailableRides = async (req, res) => {
   } catch (error) {
     console.error("Get available rides error:", error);
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "Failed to get available rides",
     });
@@ -169,15 +199,30 @@ export const getAvailableRides = async (req, res) => {
 
 export const acceptRide = async (req, res) => {
   try {
+    if (req.partner.status !== "APPROVED") {
+      return res.status(403).json({
+        success: false,
+        message: "Partner account is not approved",
+      });
+    }
+
+    if (!req.partner.isOnline) {
+      return res.status(400).json({
+        success: false,
+        message: "Partner is offline",
+      });
+    }
+
     const ride = await Ride.findOneAndUpdate(
       {
         _id: req.params.id,
         status: "SEARCHING",
-        rider: null,
+        partner: null,
+        vehicleType: req.partner.vehicleType,
       },
       {
         $set: {
-          rider: req.user._id,
+          partner: req.partner._id,
           status: "ACCEPTED",
           acceptedAt: new Date(),
         },
@@ -187,7 +232,13 @@ export const acceptRide = async (req, res) => {
       },
     )
       .populate("customer", "name phone profilePhoto")
-      .populate("rider", "name phone profilePhoto");
+      .populate({
+        path: "partner",
+        populate: {
+          path: "user",
+          select: "name phone profilePhoto",
+        },
+      });
 
     if (!ride) {
       return res.status(409).json({
@@ -196,7 +247,7 @@ export const acceptRide = async (req, res) => {
       });
     }
 
-    res.json({
+    return res.json({
       success: true,
       message: "Ride accepted successfully",
       ride,
@@ -204,7 +255,7 @@ export const acceptRide = async (req, res) => {
   } catch (error) {
     console.error("Accept ride error:", error);
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "Failed to accept ride",
     });
@@ -221,7 +272,7 @@ export const startRide = async (req, res) => {
   try {
     const ride = await Ride.findOne({
       _id: req.params.id,
-      rider: req.user._id,
+      partner: req.partner._id,
       status: "ACCEPTED",
     });
 
@@ -237,7 +288,7 @@ export const startRide = async (req, res) => {
 
     await ride.save();
 
-    res.json({
+    return res.json({
       success: true,
       message: "Ride started successfully",
       ride,
@@ -245,7 +296,7 @@ export const startRide = async (req, res) => {
   } catch (error) {
     console.error("Start ride error:", error);
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "Failed to start ride",
     });
@@ -262,7 +313,7 @@ export const completeRide = async (req, res) => {
   try {
     const ride = await Ride.findOne({
       _id: req.params.id,
-      rider: req.user._id,
+      partner: req.partner._id,
       status: "STARTED",
     });
 
@@ -278,7 +329,7 @@ export const completeRide = async (req, res) => {
 
     await ride.save();
 
-    res.json({
+    return res.json({
       success: true,
       message: "Ride completed successfully",
       ride,
@@ -286,7 +337,7 @@ export const completeRide = async (req, res) => {
   } catch (error) {
     console.error("Complete ride error:", error);
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "Failed to complete ride",
     });
