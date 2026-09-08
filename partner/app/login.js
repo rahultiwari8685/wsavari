@@ -31,7 +31,7 @@ export default function LoginScreen() {
 
     try {
       setLoading(true);
-
+      console.log("API URL:", ENDPOINTS.partnerSendOtp);
       const response = await fetch(ENDPOINTS.partnerSendOtp, {
         method: "POST",
         headers: {
@@ -42,7 +42,11 @@ export default function LoginScreen() {
         }),
       });
 
+      console.log("STATUS:", response.status);
+
       const data = await response.json();
+
+      console.log("RESPONSE:", data);
 
       if (!data.success) {
         Alert.alert("Unable to send OTP", data.message || "Please try again.");

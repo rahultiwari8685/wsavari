@@ -22,6 +22,76 @@ const generateToken = (user, partner) => {
   );
 };
 
+// export const sendPartnerOtp = async (req, res) => {
+//   try {
+//     const { phone } = req.body;
+
+//     if (!phone) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Phone number is required",
+//       });
+//     }
+
+//     const cleanPhone = phone.replace(/\D/g, "");
+
+//     if (cleanPhone.length !== 10) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Invalid phone number",
+//       });
+//     }
+
+//     const otp = generateOtp();
+
+//     // Remove previous OTP
+//     await Otp.deleteMany({
+//       phone: cleanPhone,
+//     });
+
+//     // Save new OTP
+//     await Otp.create({
+//       phone: cleanPhone,
+//       otp,
+//       expiresAt: new Date(Date.now() + 5 * 60 * 1000),
+//     });
+
+//     const smsResponse = await axios.get(
+//       "https://control.msg91.com/api/v5/otp",
+//       {
+//         params: {
+//           template_id: process.env.MSG91_OTP_TEMPLATE_ID,
+//           mobile: `91${cleanPhone}`,
+//           authkey: process.env.MSG91_AUTH_KEY,
+//           otp,
+//         },
+
+//       },
+//     );
+
+//     console.log("MSG91 response:", smsResponse.data);
+
+//     console.log("SMS provider response:", smsResponse.data);
+
+//     console.log(`Partner OTP for ${cleanPhone}: ${otp}`);
+
+//     return res.json({
+//       success: true,
+//       message: "OTP sent successfully",
+//     });
+//   } catch (error) {
+//     console.error(
+//       "Send partner OTP error:",
+//       error.response?.data || error.message,
+//     );
+
+//     return res.status(500).json({
+//       success: false,
+//       message: "Failed to send OTP",
+//     });
+//   }
+// };
+
 export const sendPartnerOtp = async (req, res) => {
   try {
     const { phone } = req.body;
@@ -44,18 +114,7 @@ export const sendPartnerOtp = async (req, res) => {
 
     const otp = generateOtp();
 
-    // Remove previous OTP
-    await Otp.deleteMany({
-      phone: cleanPhone,
-    });
-
-    // Save new OTP
-    await Otp.create({
-      phone: cleanPhone,
-      otp,
-      expiresAt: new Date(Date.now() + 5 * 60 * 1000),
-    });
-
+    // Send OTP through MSG91
     const smsResponse = await axios.get(
       "https://control.msg91.com/api/v5/otp",
       {
@@ -70,13 +129,36 @@ export const sendPartnerOtp = async (req, res) => {
 
     console.log("MSG91 response:", smsResponse.data);
 
-    console.log("SMS provider response:", smsResponse.data);
+    // Do NOT save OTP if MSG91 rejected the request
+    if (smsResponse.data?.type !== "success") {
+      console.error("MSG91 failed:", smsResponse.data);
 
-    console.log(`Partner OTP for ${cleanPhone}: ${otp}`);
+      return res.status(500).json({
+        success: false,
+        message: "Unable to send OTP",
+        provider: smsResponse.data,
+      });
+    }
+
+    // Remove previous OTP
+    await Otp.deleteMany({
+      phone: cleanPhone,
+    });
+
+    // Save new OTP
+    await Otp.create({
+      phone: cleanPhone,
+      otp,
+      attempts: 0,
+      expiresAt: new Date(Date.now() + 5 * 60 * 1000),
+    });
+
+    console.log(`Partner OTP sent to ${cleanPhone}`);
 
     return res.json({
       success: true,
       message: "OTP sent successfully",
+      requestId: smsResponse.data.request_id,
     });
   } catch (error) {
     console.error(
@@ -103,7 +185,7 @@ export const verifyPartnerOtp = async (req, res) => {
       });
     }
 
-    const cleanPhone = phone.trim();
+    const cleanPhone = phone.replace(/\D/g, "");
 
     const otpRecord = await Otp.findOne({
       phone: cleanPhone,
