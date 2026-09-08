@@ -56,21 +56,19 @@ export const sendPartnerOtp = async (req, res) => {
       expiresAt: new Date(Date.now() + 5 * 60 * 1000),
     });
 
-    // Send SMS
     const smsResponse = await axios.get(
       "https://control.msg91.com/api/v5/otp",
       {
         params: {
-          template_id: process.env.SMS_TEMPLATE_ID,
+          template_id: process.env.MSG91_OTP_TEMPLATE_ID,
           mobile: `91${cleanPhone}`,
-          authkey: process.env.SMS_AUTH_KEY,
+          authkey: process.env.MSG91_AUTH_KEY,
           otp,
-        },
-        headers: {
-          "Content-Type": "application/json",
         },
       },
     );
+
+    console.log("MSG91 response:", smsResponse.data);
 
     console.log("SMS provider response:", smsResponse.data);
 
