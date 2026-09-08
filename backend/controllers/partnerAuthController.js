@@ -2,6 +2,7 @@ import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 import Otp from "../models/Otp.js";
 import Partner from "../models/Partner.js";
+import axios from "axios";
 
 const generateOtp = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
@@ -32,30 +33,60 @@ export const sendPartnerOtp = async (req, res) => {
       });
     }
 
-    const cleanPhone = phone.trim();
+    const cleanPhone = phone.replace(/\D/g, "");
+
+    if (cleanPhone.length !== 10) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid phone number",
+      });
+    }
 
     const otp = generateOtp();
 
+    // Remove previous OTP
     await Otp.deleteMany({
       phone: cleanPhone,
     });
 
+    // Save new OTP
     await Otp.create({
       phone: cleanPhone,
       otp,
       expiresAt: new Date(Date.now() + 5 * 60 * 1000),
     });
 
+    // Send SMS
+    const smsResponse = await axios.get(
+      "https://control.msg91.com/api/v5/otp",
+      {
+        params: {
+          template_id: process.env.SMS_TEMPLATE_ID,
+          mobile: `91${cleanPhone}`,
+          authkey: process.env.SMS_AUTH_KEY,
+          otp,
+        },
+        headers: {
+          "Content-Type": "application/json",
+        },
+      },
+    );
+
+    console.log("SMS provider response:", smsResponse.data);
+
     console.log(`Partner OTP for ${cleanPhone}: ${otp}`);
 
-    res.json({
+    return res.json({
       success: true,
       message: "OTP sent successfully",
     });
   } catch (error) {
-    console.error("Send partner OTP error:", error);
+    console.error(
+      "Send partner OTP error:",
+      error.response?.data || error.message,
+    );
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "Failed to send OTP",
     });

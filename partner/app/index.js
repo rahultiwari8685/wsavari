@@ -1,33 +1,35 @@
 import { router } from "expo-router";
 import { useEffect } from "react";
 import { StyleSheet, Text, View } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function SplashScreen() {
   useEffect(() => {
-    const timer = setTimeout(() => {
-      router.replace("/onboarding");
-    }, 2000);
+    const timer = setTimeout(async () => {
+      const token = await AsyncStorage.getItem("partnerToken");
+
+      if (token) {
+        router.replace("/partner");
+      } else {
+        router.replace("/login");
+      }
+    }, 1500);
 
     return () => clearTimeout(timer);
   }, []);
 
   return (
     <View style={styles.container}>
-      {/* Logo Icon */}
       <View style={styles.logoCircle}>
         <Text style={styles.logoIcon}>W</Text>
       </View>
 
-      {/* Brand */}
       <Text style={styles.logoText}>WOMEN SAVARI</Text>
 
-      <Text style={styles.tagline}>Women First Mobility</Text>
+      <Text style={styles.tagline}>Partner • Safe Rides • Better Earnings</Text>
 
-      {/* Bottom Text */}
       <View style={styles.bottom}>
-        <Text style={styles.safeText}>
-          Safe Rides • Flexible Earnings • Women Empowered
-        </Text>
+        <Text style={styles.safeText}>Women First Mobility</Text>
       </View>
     </View>
   );
@@ -67,15 +69,13 @@ const styles = StyleSheet.create({
 
   tagline: {
     marginTop: 8,
-    fontSize: 15,
+    fontSize: 14,
     color: "#666666",
-    letterSpacing: 0.5,
   },
 
   bottom: {
     position: "absolute",
     bottom: 45,
-    paddingHorizontal: 20,
   },
 
   safeText: {

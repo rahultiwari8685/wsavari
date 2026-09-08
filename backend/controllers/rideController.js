@@ -1,11 +1,5 @@
 import Ride from "../models/Ride.js";
 
-/*
-|--------------------------------------------------------------------------
-| CUSTOMER - CREATE RIDE
-|--------------------------------------------------------------------------
-*/
-
 export const createRide = async (req, res) => {
   try {
     if (req.user.role !== "customer") {
@@ -50,12 +44,6 @@ export const createRide = async (req, res) => {
   }
 };
 
-/*
-|--------------------------------------------------------------------------
-| GET SINGLE RIDE
-|--------------------------------------------------------------------------
-*/
-
 export const getRide = async (req, res) => {
   try {
     const ride = await Ride.findById(req.params.id)
@@ -88,12 +76,6 @@ export const getRide = async (req, res) => {
     });
   }
 };
-
-/*
-|--------------------------------------------------------------------------
-| CUSTOMER - CANCEL RIDE
-|--------------------------------------------------------------------------
-*/
 
 export const cancelRide = async (req, res) => {
   try {
@@ -146,12 +128,6 @@ export const cancelRide = async (req, res) => {
   }
 };
 
-/*
-|--------------------------------------------------------------------------
-| PARTNER - GET AVAILABLE RIDES
-|--------------------------------------------------------------------------
-*/
-
 export const getAvailableRides = async (req, res) => {
   try {
     if (req.partner.status !== "APPROVED") {
@@ -190,12 +166,6 @@ export const getAvailableRides = async (req, res) => {
     });
   }
 };
-
-/*
-|--------------------------------------------------------------------------
-| PARTNER - ACCEPT RIDE
-|--------------------------------------------------------------------------
-*/
 
 export const acceptRide = async (req, res) => {
   try {
@@ -262,12 +232,6 @@ export const acceptRide = async (req, res) => {
   }
 };
 
-/*
-|--------------------------------------------------------------------------
-| PARTNER - START RIDE
-|--------------------------------------------------------------------------
-*/
-
 export const startRide = async (req, res) => {
   try {
     const ride = await Ride.findOne({
@@ -302,12 +266,6 @@ export const startRide = async (req, res) => {
     });
   }
 };
-
-/*
-|--------------------------------------------------------------------------
-| PARTNER - COMPLETE RIDE
-|--------------------------------------------------------------------------
-*/
 
 export const completeRide = async (req, res) => {
   try {
