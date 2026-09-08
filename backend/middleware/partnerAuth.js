@@ -25,7 +25,7 @@ export const partnerAuth = async (req, res, next) => {
 
     const partner = await Partner.findById(decoded.partnerId).populate(
       "user",
-      "name phone",
+      "name phone role isActive isVerified",
     );
 
     if (!partner) {
