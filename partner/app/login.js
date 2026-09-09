@@ -54,9 +54,12 @@ export default function LoginScreen() {
       }
 
       router.push({
-        pathname: "/otp",
+        pathname: "/partner/otp",
         params: {
-          phone: cleanPhone,
+          phone,
+          name,
+          vehicleType,
+          vehicleNumber,
         },
       });
     } catch (error) {

@@ -14,7 +14,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ENDPOINTS } from "../constants/api";
 
 export default function OtpScreen() {
-  const { phone } = useLocalSearchParams();
+  const { phone, name, vehicleType, vehicleNumber } = useLocalSearchParams();
 
   const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
@@ -37,6 +37,9 @@ export default function OtpScreen() {
         body: JSON.stringify({
           phone,
           otp,
+          name,
+          vehicleType,
+          vehicleNumber,
         }),
       });
 
