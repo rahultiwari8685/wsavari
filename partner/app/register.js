@@ -76,7 +76,7 @@ export default function PartnerRegisterScreen() {
         [
           {
             text: "OK",
-            onPress: () => router.replace("/partner/login"),
+            onPress: () => router.replace("/login"),
           },
         ],
       );
