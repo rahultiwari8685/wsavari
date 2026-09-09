@@ -14,11 +14,98 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ENDPOINTS } from "../constants/api";
 
 export default function OtpScreen() {
-  const { phone, name, vehicleType, vehicleNumber } = useLocalSearchParams();
+  const { phone } = useLocalSearchParams();
 
   const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
+
+  // const verifyOtp = async () => {
+  //   if (otp.length !== 6) {
+  //     Alert.alert("Invalid OTP", "Please enter the 6 digit OTP.");
+  //     return;
+  //   }
+
+  //   try {
+  //     setLoading(true);
+
+  //     const response = await fetch(ENDPOINTS.partnerVerifyOtp, {
+  //       method: "POST",
+  //       headers: {
+  //         "Content-Type": "application/json",
+  //       },
+  //       body: JSON.stringify({
+  //         phone,
+  //         otp,
+  //         name,
+  //         vehicleType,
+  //         vehicleNumber,
+  //       }),
+  //     });
+
+  //     const data = await response.json();
+
+  //     if (!data.success) {
+  //       Alert.alert("Verification Failed", data.message || "Invalid OTP.");
+  //       return;
+  //     }
+
+  //     /*
+  //      * NEW PARTNER
+  //      * OTP is correct, but partner profile does not exist yet.
+  //      */
+  //     if (data.needsRegistration) {
+  //       router.push({
+  //         pathname: "/partner/register",
+  //         params: {
+  //           phone: data.phone || phone,
+  //         },
+  //       });
+
+  //       return;
+  //     }
+
+  //     /*
+  //      * EXISTING PARTNER
+  //      */
+  //     if (!data.token) {
+  //       Alert.alert("Login Error", "Server did not return a login token.");
+  //       return;
+  //     }
+
+  //     await AsyncStorage.setItem("partnerToken", data.token);
+
+  //     if (data.partner) {
+  //       await AsyncStorage.setItem("partnerData", JSON.stringify(data.partner));
+  //     }
+
+  //     router.replace("/partner");
+
+  //     // if (!data.success) {
+  //     //   Alert.alert("Verification Failed", data.message || "Invalid OTP.");
+  //     //   return;
+  //     // }
+
+  //     // if (!data.token) {
+  //     //   Alert.alert("Login Error", "Server did not return a login token.");
+  //     //   return;
+  //     // }
+
+  //     // await AsyncStorage.setItem("partnerToken", data.token);
+
+  //     // if (data.partner) {
+  //     //   await AsyncStorage.setItem("partnerData", JSON.stringify(data.partner));
+  //     // }
+
+  //     // router.replace("/partner");
+  //   } catch (error) {
+  //     console.error("Partner OTP verification error:", error);
+
+  //     Alert.alert("Connection Error", "Unable to connect to server.");
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
 
   const verifyOtp = async () => {
     if (otp.length !== 6) {
@@ -37,37 +124,36 @@ export default function OtpScreen() {
         body: JSON.stringify({
           phone,
           otp,
-          name,
-          vehicleType,
-          vehicleNumber,
         }),
       });
 
       const data = await response.json();
+
+      console.log("VERIFY OTP RESPONSE:", data);
 
       if (!data.success) {
         Alert.alert("Verification Failed", data.message || "Invalid OTP.");
         return;
       }
 
-      /*
-       * NEW PARTNER
-       * OTP is correct, but partner profile does not exist yet.
-       */
-      if (data.needsRegistration) {
+      // ==========================================
+      // NEW PARTNER
+      // ==========================================
+      if (data.requiresRegistration) {
         router.push({
           pathname: "/partner/register",
           params: {
-            phone: data.phone || phone,
+            phone,
+            otp,
           },
         });
 
         return;
       }
 
-      /*
-       * EXISTING PARTNER
-       */
+      // ==========================================
+      // EXISTING PARTNER
+      // ==========================================
       if (!data.token) {
         Alert.alert("Login Error", "Server did not return a login token.");
         return;
@@ -80,24 +166,6 @@ export default function OtpScreen() {
       }
 
       router.replace("/partner");
-
-      // if (!data.success) {
-      //   Alert.alert("Verification Failed", data.message || "Invalid OTP.");
-      //   return;
-      // }
-
-      // if (!data.token) {
-      //   Alert.alert("Login Error", "Server did not return a login token.");
-      //   return;
-      // }
-
-      // await AsyncStorage.setItem("partnerToken", data.token);
-
-      // if (data.partner) {
-      //   await AsyncStorage.setItem("partnerData", JSON.stringify(data.partner));
-      // }
-
-      // router.replace("/partner");
     } catch (error) {
       console.error("Partner OTP verification error:", error);
 

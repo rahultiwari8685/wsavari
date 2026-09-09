@@ -143,25 +143,10 @@ export const verifyPartnerOtp = async (req, res) => {
     // CREATE PARTNER FOR FIRST TIME
     // ==========================================
     if (!partner) {
-      if (!name || !vehicleType || !vehicleNumber) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Name, vehicle type and vehicle number are required for partner registration",
-        });
-      }
-
-      partner = await Partner.create({
-        user: user._id,
-        vehicleType,
-        vehicleNumber,
-        drivingLicense: drivingLicense || "",
-        status: "PENDING",
-        isOnline: false,
-        currentLocation: {
-          latitude: null,
-          longitude: null,
-        },
+      return res.json({
+        success: true,
+        requiresRegistration: true,
+        message: "OTP verified. Please complete partner registration.",
       });
     }
 
@@ -196,6 +181,190 @@ export const verifyPartnerOtp = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Failed to verify partner OTP",
+    });
+  }
+};
+
+export const registerPartner = async (req, res) => {
+  try {
+    const { phone, otp, name, vehicleType, vehicleNumber, drivingLicense } =
+      req.body;
+
+    // --------------------------------------------
+    // 1. REQUIRED FIELDS
+    // --------------------------------------------
+    if (!phone || !otp || !name || !vehicleType || !vehicleNumber) {
+      return res.status(400).json({
+        success: false,
+        message: "Name, vehicle type and vehicle number are required",
+      });
+    }
+
+    // --------------------------------------------
+    // 2. CLEAN PHONE
+    // --------------------------------------------
+    const cleanPhone = String(phone).replace(/\D/g, "");
+
+    if (cleanPhone.length !== 10) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid phone number",
+      });
+    }
+
+    // --------------------------------------------
+    // 3. CLEAN INPUT
+    // --------------------------------------------
+    const cleanName = String(name).trim();
+    const cleanVehicleType = String(vehicleType).trim();
+    const cleanVehicleNumber = String(vehicleNumber).trim().toUpperCase();
+
+    const cleanDrivingLicense = drivingLicense
+      ? String(drivingLicense).trim().toUpperCase()
+      : "";
+
+    if (!cleanName) {
+      return res.status(400).json({
+        success: false,
+        message: "Name is required",
+      });
+    }
+
+    if (!cleanVehicleType) {
+      return res.status(400).json({
+        success: false,
+        message: "Vehicle type is required",
+      });
+    }
+
+    if (!cleanVehicleNumber) {
+      return res.status(400).json({
+        success: false,
+        message: "Vehicle number is required",
+      });
+    }
+
+    // --------------------------------------------
+    // 4. DEVELOPMENT OTP
+    // --------------------------------------------
+    if (String(otp).trim() !== "123456") {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid OTP",
+      });
+    }
+
+    // --------------------------------------------
+    // 5. CHECK IF USER ALREADY EXISTS
+    // --------------------------------------------
+    let user = await User.findOne({
+      phone: cleanPhone,
+    });
+
+    // --------------------------------------------
+    // 6. CREATE USER IF NOT EXISTS
+    // --------------------------------------------
+    if (!user) {
+      user = await User.create({
+        phone: cleanPhone,
+        name: cleanName,
+        role: "customer",
+        isVerified: true,
+        isActive: true,
+      });
+    } else {
+      // User exists
+      user.name = cleanName;
+      user.isVerified = true;
+
+      await user.save();
+    }
+
+    // --------------------------------------------
+    // 7. CHECK EXISTING PARTNER
+    // --------------------------------------------
+    let partner = await Partner.findOne({
+      user: user._id,
+    });
+
+    if (partner) {
+      return res.status(400).json({
+        success: false,
+        message: "Partner account already exists",
+      });
+    }
+
+    // --------------------------------------------
+    // 8. CREATE PARTNER PROFILE
+    // --------------------------------------------
+    partner = await Partner.create({
+      user: user._id,
+
+      vehicleType: cleanVehicleType,
+
+      vehicleNumber: cleanVehicleNumber,
+
+      drivingLicense: cleanDrivingLicense,
+
+      status: "PENDING",
+
+      isOnline: false,
+
+      currentLocation: {
+        latitude: null,
+        longitude: null,
+      },
+    });
+
+    // --------------------------------------------
+    // 9. DELETE OTP RECORD
+    // --------------------------------------------
+    await Otp.deleteMany({
+      phone: cleanPhone,
+    });
+
+    // --------------------------------------------
+    // 10. GENERATE LOGIN TOKEN
+    // --------------------------------------------
+    const token = generateToken(user, partner);
+
+    // --------------------------------------------
+    // 11. RESPONSE
+    // --------------------------------------------
+    return res.status(201).json({
+      success: true,
+
+      message: "Partner registration successful. Waiting for approval.",
+
+      token,
+
+      partner: {
+        _id: partner._id,
+
+        user: partner.user,
+
+        vehicleType: partner.vehicleType,
+
+        vehicleNumber: partner.vehicleNumber,
+
+        drivingLicense: partner.drivingLicense,
+
+        status: partner.status,
+
+        isOnline: partner.isOnline,
+
+        currentLocation: partner.currentLocation,
+      },
+    });
+  } catch (error) {
+    console.error(
+      "Register partner error:",
+      error.response?.data || error.message,
+    );
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to register partner",
     });
   }
 };
