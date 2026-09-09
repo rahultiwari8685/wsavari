@@ -50,6 +50,24 @@ export default function OtpScreen() {
         return;
       }
 
+      /*
+       * NEW PARTNER
+       * OTP is correct, but partner profile does not exist yet.
+       */
+      if (data.needsRegistration) {
+        router.push({
+          pathname: "/partner/register",
+          params: {
+            phone: data.phone || phone,
+          },
+        });
+
+        return;
+      }
+
+      /*
+       * EXISTING PARTNER
+       */
       if (!data.token) {
         Alert.alert("Login Error", "Server did not return a login token.");
         return;
@@ -62,6 +80,24 @@ export default function OtpScreen() {
       }
 
       router.replace("/partner");
+
+      // if (!data.success) {
+      //   Alert.alert("Verification Failed", data.message || "Invalid OTP.");
+      //   return;
+      // }
+
+      // if (!data.token) {
+      //   Alert.alert("Login Error", "Server did not return a login token.");
+      //   return;
+      // }
+
+      // await AsyncStorage.setItem("partnerToken", data.token);
+
+      // if (data.partner) {
+      //   await AsyncStorage.setItem("partnerData", JSON.stringify(data.partner));
+      // }
+
+      // router.replace("/partner");
     } catch (error) {
       console.error("Partner OTP verification error:", error);
 
