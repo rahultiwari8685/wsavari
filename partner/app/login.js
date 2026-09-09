@@ -31,7 +31,9 @@ export default function LoginScreen() {
 
     try {
       setLoading(true);
+
       console.log("API URL:", ENDPOINTS.partnerSendOtp);
+
       const response = await fetch(ENDPOINTS.partnerSendOtp, {
         method: "POST",
         headers: {
@@ -54,12 +56,9 @@ export default function LoginScreen() {
       }
 
       router.push({
-        pathname: "/partner/otp",
+        pathname: "/otp",
         params: {
-          phone,
-          name,
-          vehicleType,
-          vehicleNumber,
+          phone: cleanPhone,
         },
       });
     } catch (error) {

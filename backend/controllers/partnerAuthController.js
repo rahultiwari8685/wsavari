@@ -78,6 +78,151 @@ export const sendPartnerOtp = async (req, res) => {
   }
 };
 
+export const verifyPartnerOtp = async (req, res) => {
+  try {
+    const { phone, otp } = req.body;
+
+    if (!phone || !otp) {
+      return res.status(400).json({
+        success: false,
+        message: "Phone and OTP are required",
+      });
+    }
+
+    const cleanPhone = phone.replace(/\D/g, "");
+
+    if (cleanPhone.length !== 10) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid phone number",
+      });
+    }
+
+    // Find OTP
+    const otpRecord = await Otp.findOne({
+      phone: cleanPhone,
+    });
+
+    if (!otpRecord) {
+      return res.status(400).json({
+        success: false,
+        message: "OTP not found or expired",
+      });
+    }
+
+    // Check expiry
+    if (otpRecord.expiresAt < new Date()) {
+      await Otp.deleteOne({
+        _id: otpRecord._id,
+      });
+
+      return res.status(400).json({
+        success: false,
+        message: "OTP has expired",
+      });
+    }
+
+    // Check attempts
+    if (otpRecord.attempts >= 5) {
+      await Otp.deleteOne({
+        _id: otpRecord._id,
+      });
+
+      return res.status(429).json({
+        success: false,
+        message: "Too many OTP attempts",
+      });
+    }
+
+    // Verify OTP
+    if (otpRecord.otp !== String(otp).trim()) {
+      otpRecord.attempts += 1;
+      await otpRecord.save();
+
+      return res.status(400).json({
+        success: false,
+        message: "Invalid OTP",
+      });
+    }
+
+    // OTP is correct
+    await Otp.deleteOne({
+      _id: otpRecord._id,
+    });
+
+    // Find user
+    let user = await User.findOne({
+      phone: cleanPhone,
+    });
+
+    // Create user if doesn't exist
+    if (!user) {
+      user = await User.create({
+        phone: cleanPhone,
+        name: "",
+        role: "customer",
+        isVerified: true,
+        isActive: true,
+      });
+    } else {
+      user.isVerified = true;
+      await user.save();
+    }
+
+    // Find partner
+    const partner = await Partner.findOne({
+      user: user._id,
+    });
+
+    // ==========================================
+    // NEW PARTNER
+    // ==========================================
+
+    if (!partner) {
+      return res.json({
+        success: true,
+        message: "OTP verified. Partner registration required.",
+        needsRegistration: true,
+        phone: cleanPhone,
+      });
+    }
+
+    // ==========================================
+    // EXISTING PARTNER
+    // ==========================================
+
+    const token = generateToken(user, partner);
+
+    return res.json({
+      success: true,
+      message:
+        partner.status === "APPROVED"
+          ? "Partner login successful"
+          : "Partner account is waiting for approval.",
+
+      token,
+
+      partner: {
+        _id: partner._id,
+        user: partner.user,
+        vehicleType: partner.vehicleType,
+        vehicleNumber: partner.vehicleNumber,
+        drivingLicense: partner.drivingLicense,
+        status: partner.status,
+        isOnline: partner.isOnline,
+        currentLocation: partner.currentLocation,
+      },
+    });
+  } catch (error) {
+    console.error("Verify partner OTP error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to verify partner OTP",
+    });
+  }
+};
+
 // export const sendPartnerOtp = async (req, res) => {
 //   try {
 //     const { phone } = req.body;
@@ -161,141 +306,141 @@ export const sendPartnerOtp = async (req, res) => {
 //   }
 // };
 
-export const verifyPartnerOtp = async (req, res) => {
-  try {
-    const { phone, otp, name, vehicleType, vehicleNumber, drivingLicense } =
-      req.body;
+// export const verifyPartnerOtp = async (req, res) => {
+//   try {
+//     const { phone, otp, name, vehicleType, vehicleNumber, drivingLicense } =
+//       req.body;
 
-    if (!phone || !otp) {
-      return res.status(400).json({
-        success: false,
-        message: "Phone and OTP are required",
-      });
-    }
+//     if (!phone || !otp) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Phone and OTP are required",
+//       });
+//     }
 
-    const cleanPhone = phone.replace(/\D/g, "");
+//     const cleanPhone = phone.replace(/\D/g, "");
 
-    const otpRecord = await Otp.findOne({
-      phone: cleanPhone,
-    });
+//     const otpRecord = await Otp.findOne({
+//       phone: cleanPhone,
+//     });
 
-    if (!otpRecord) {
-      return res.status(400).json({
-        success: false,
-        message: "OTP not found or expired",
-      });
-    }
+//     if (!otpRecord) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "OTP not found or expired",
+//       });
+//     }
 
-    if (otpRecord.expiresAt < new Date()) {
-      await Otp.deleteOne({ _id: otpRecord._id });
+//     if (otpRecord.expiresAt < new Date()) {
+//       await Otp.deleteOne({ _id: otpRecord._id });
 
-      return res.status(400).json({
-        success: false,
-        message: "OTP has expired",
-      });
-    }
+//       return res.status(400).json({
+//         success: false,
+//         message: "OTP has expired",
+//       });
+//     }
 
-    if (otpRecord.attempts >= 5) {
-      await Otp.deleteOne({ _id: otpRecord._id });
+//     if (otpRecord.attempts >= 5) {
+//       await Otp.deleteOne({ _id: otpRecord._id });
 
-      return res.status(429).json({
-        success: false,
-        message: "Too many OTP attempts",
-      });
-    }
+//       return res.status(429).json({
+//         success: false,
+//         message: "Too many OTP attempts",
+//       });
+//     }
 
-    if (otpRecord.otp !== String(otp).trim()) {
-      otpRecord.attempts += 1;
-      await otpRecord.save();
+//     if (otpRecord.otp !== String(otp).trim()) {
+//       otpRecord.attempts += 1;
+//       await otpRecord.save();
 
-      return res.status(400).json({
-        success: false,
-        message: "Invalid OTP",
-      });
-    }
+//       return res.status(400).json({
+//         success: false,
+//         message: "Invalid OTP",
+//       });
+//     }
 
-    // Find or create user
-    let user = await User.findOne({
-      phone: cleanPhone,
-    });
+//     // Find or create user
+//     let user = await User.findOne({
+//       phone: cleanPhone,
+//     });
 
-    if (!user) {
-      user = await User.create({
-        phone: cleanPhone,
-        name: name || "",
-        role: "customer",
-        isVerified: true,
-        isActive: true,
-      });
-    } else {
-      user.isVerified = true;
+//     if (!user) {
+//       user = await User.create({
+//         phone: cleanPhone,
+//         name: name || "",
+//         role: "customer",
+//         isVerified: true,
+//         isActive: true,
+//       });
+//     } else {
+//       user.isVerified = true;
 
-      if (name) {
-        user.name = name;
-      }
+//       if (name) {
+//         user.name = name;
+//       }
 
-      await user.save();
-    }
+//       await user.save();
+//     }
 
-    // Find existing partner profile
-    let partner = await Partner.findOne({
-      user: user._id,
-    });
+//     // Find existing partner profile
+//     let partner = await Partner.findOne({
+//       user: user._id,
+//     });
 
-    // Create partner profile for first-time partner
-    if (!partner) {
-      if (!name || !vehicleType || !vehicleNumber) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Name, vehicle type and vehicle number are required for partner registration",
-        });
-      }
+//     // Create partner profile for first-time partner
+//     if (!partner) {
+//       if (!name || !vehicleType || !vehicleNumber) {
+//         return res.status(400).json({
+//           success: false,
+//           message:
+//             "Name, vehicle type and vehicle number are required for partner registration",
+//         });
+//       }
 
-      partner = await Partner.create({
-        user: user._id,
-        vehicleType,
-        vehicleNumber,
-        drivingLicense: drivingLicense || "",
-        status: "PENDING",
-        isOnline: false,
-        currentLocation: {
-          latitude: null,
-          longitude: null,
-        },
-      });
-    }
+//       partner = await Partner.create({
+//         user: user._id,
+//         vehicleType,
+//         vehicleNumber,
+//         drivingLicense: drivingLicense || "",
+//         status: "PENDING",
+//         isOnline: false,
+//         currentLocation: {
+//           latitude: null,
+//           longitude: null,
+//         },
+//       });
+//     }
 
-    await Otp.deleteOne({
-      _id: otpRecord._id,
-    });
+//     await Otp.deleteOne({
+//       _id: otpRecord._id,
+//     });
 
-    const token = generateToken(user, partner);
+//     const token = generateToken(user, partner);
 
-    return res.json({
-      success: true,
-      message:
-        partner.status === "APPROVED"
-          ? "Partner login successful"
-          : "Partner registration successful. Waiting for approval.",
-      token,
-      partner: {
-        _id: partner._id,
-        user: partner.user,
-        vehicleType: partner.vehicleType,
-        vehicleNumber: partner.vehicleNumber,
-        drivingLicense: partner.drivingLicense,
-        status: partner.status,
-        isOnline: partner.isOnline,
-        currentLocation: partner.currentLocation,
-      },
-    });
-  } catch (error) {
-    console.error("Verify partner OTP error:", error);
+//     return res.json({
+//       success: true,
+//       message:
+//         partner.status === "APPROVED"
+//           ? "Partner login successful"
+//           : "Partner registration successful. Waiting for approval.",
+//       token,
+//       partner: {
+//         _id: partner._id,
+//         user: partner.user,
+//         vehicleType: partner.vehicleType,
+//         vehicleNumber: partner.vehicleNumber,
+//         drivingLicense: partner.drivingLicense,
+//         status: partner.status,
+//         isOnline: partner.isOnline,
+//         currentLocation: partner.currentLocation,
+//       },
+//     });
+//   } catch (error) {
+//     console.error("Verify partner OTP error:", error);
 
-    return res.status(500).json({
-      success: false,
-      message: "Failed to verify partner OTP",
-    });
-  }
-};
+//     return res.status(500).json({
+//       success: false,
+//       message: "Failed to verify partner OTP",
+//     });
+//   }
+// };
