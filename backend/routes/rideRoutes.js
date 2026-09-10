@@ -17,15 +17,11 @@ import { partnerAuth } from "../middleware/partnerAuth.js";
 
 const router = express.Router();
 
-// CUSTOMER
-
 router.post("/", protect, createRide);
 
 router.put("/:id/cancel", protect, cancelRide);
 
 router.get("/:id", protect, getRide);
-
-// PARTNER
 
 router.get("/available", partnerAuth, getAvailableRides);
 
