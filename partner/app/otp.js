@@ -20,6 +20,71 @@ export default function OtpScreen() {
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
 
+  // const verifyOtp = async () => {
+  //   if (otp.length !== 6) {
+  //     Alert.alert("Invalid OTP", "Please enter the 6 digit OTP.");
+  //     return;
+  //   }
+
+  //   try {
+  //     setLoading(true);
+
+  //     const response = await fetch(ENDPOINTS.partnerVerifyOtp, {
+  //       method: "POST",
+  //       headers: {
+  //         "Content-Type": "application/json",
+  //       },
+  //       body: JSON.stringify({
+  //         phone,
+  //         otp,
+  //       }),
+  //     });
+
+  //     const data = await response.json();
+
+  //     console.log("VERIFY OTP RESPONSE:", data);
+
+  //     if (!data.success) {
+  //       Alert.alert("Verification Failed", data.message || "Invalid OTP.");
+  //       return;
+  //     }
+
+  //     // ==========================================
+  //     // NEW PARTNER
+  //     // ==========================================
+  //     if (data.requiresRegistration) {
+  //       router.push({
+  //         pathname: "/register",
+  //         params: {
+  //           phone,
+  //           otp,
+  //         },
+  //       });
+
+  //       return;
+  //     }
+
+  //     if (!data.token) {
+  //       Alert.alert("Login Error", "Server did not return a login token.");
+  //       return;
+  //     }
+
+  //     await AsyncStorage.setItem("partnerToken", data.token);
+
+  //     if (data.partner) {
+  //       await AsyncStorage.setItem("partnerData", JSON.stringify(data.partner));
+  //     }
+
+  //     router.replace("/login");
+  //   } catch (error) {
+  //     console.error("Partner OTP verification error:", error);
+
+  //     Alert.alert("Connection Error", "Unable to connect to server.");
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+
   const verifyOtp = async () => {
     if (otp.length !== 6) {
       Alert.alert("Invalid OTP", "Please enter the 6 digit OTP.");
@@ -42,7 +107,8 @@ export default function OtpScreen() {
 
       const data = await response.json();
 
-      console.log("VERIFY OTP RESPONSE:", data);
+      console.log("VERIFY STATUS:", response.status);
+      console.log("VERIFY RESPONSE:", data);
 
       if (!data.success) {
         Alert.alert("Verification Failed", data.message || "Invalid OTP.");
@@ -50,19 +116,24 @@ export default function OtpScreen() {
       }
 
       // ==========================================
-      // NEW PARTNER
+      // FIRST TIME PARTNER
       // ==========================================
+
       if (data.requiresRegistration) {
-        router.push({
+        router.replace({
           pathname: "/register",
           params: {
-            phone,
-            otp,
+            phone: String(phone),
+            otp: String(otp),
           },
         });
 
         return;
       }
+
+      // ==========================================
+      // EXISTING PARTNER
+      // ==========================================
 
       if (!data.token) {
         Alert.alert("Login Error", "Server did not return a login token.");
@@ -75,7 +146,7 @@ export default function OtpScreen() {
         await AsyncStorage.setItem("partnerData", JSON.stringify(data.partner));
       }
 
-      router.replace("/login");
+      router.replace("/partner");
     } catch (error) {
       console.error("Partner OTP verification error:", error);
 

@@ -19,8 +19,6 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ENDPOINTS } from "../constants/api";
 
 export default function PartnerRegisterScreen() {
-  // IMPORTANT:
-  // OTP भी receive करना है
   const { phone, otp } = useLocalSearchParams();
 
   const [name, setName] = useState("");
@@ -31,10 +29,6 @@ export default function PartnerRegisterScreen() {
   const [loading, setLoading] = useState(false);
 
   const registerPartner = async () => {
-    // ==========================================
-    // VALIDATION
-    // ==========================================
-
     if (!name.trim()) {
       Alert.alert("Required", "Please enter your name.");
       return;
@@ -88,19 +82,28 @@ export default function PartnerRegisterScreen() {
         },
 
         body: JSON.stringify({
-          phone: cleanPhone,
-
-          // IMPORTANT
-          otp: cleanOtp,
-
+          phone: String(phone),
+          otp: String(otp),
           name: name.trim(),
-
-          vehicleType: vehicleType.trim(),
-
+          vehicleType: vehicleType.trim().toLowerCase(),
           vehicleNumber: vehicleNumber.trim().toUpperCase(),
-
           drivingLicense: drivingLicense.trim().toUpperCase(),
         }),
+
+        // body: JSON.stringify({
+        //   phone: cleanPhone,
+
+        //   // IMPORTANT
+        //   otp: cleanOtp,
+
+        //   name: name.trim(),
+
+        //   vehicleType: vehicleType.trim(),
+
+        //   vehicleNumber: vehicleNumber.trim().toUpperCase(),
+
+        //   drivingLicense: drivingLicense.trim().toUpperCase(),
+        // }),
       });
 
       console.log("REGISTER STATUS:", response.status);
@@ -227,10 +230,10 @@ export default function PartnerRegisterScreen() {
 
       <TextInput
         style={styles.input}
-        placeholder="Example: Bike / Scooter / Auto"
-        placeholderTextColor="#999"
+        placeholder="bike / scooter / auto / car"
         value={vehicleType}
-        onChangeText={setVehicleType}
+        onChangeText={(text) => setVehicleType(text.toLowerCase())}
+        autoCapitalize="none"
       />
 
       {/* ================= VEHICLE NUMBER ================= */}

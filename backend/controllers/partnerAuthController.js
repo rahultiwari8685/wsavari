@@ -210,7 +210,17 @@ export const registerPartner = async (req, res) => {
     // 3. CLEAN INPUT
     // --------------------------------------------
     const cleanName = String(name).trim();
-    const cleanVehicleType = String(vehicleType).trim();
+    const cleanVehicleType = String(vehicleType).trim().toLowerCase();
+
+    const allowedVehicleTypes = ["bike", "scooter", "auto", "car"];
+
+    if (!allowedVehicleTypes.includes(cleanVehicleType)) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Invalid vehicle type. Allowed values: bike, scooter, auto, car",
+      });
+    }
     const cleanVehicleNumber = String(vehicleNumber).trim().toUpperCase();
 
     const cleanDrivingLicense = drivingLicense
