@@ -184,8 +184,6 @@ export default function PartnerScreen() {
         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
       }
     >
-      {/* HEADER */}
-
       <View style={styles.header}>
         <View>
           <Text style={styles.brand}>WOMEN SAVARI</Text>
@@ -197,8 +195,6 @@ export default function PartnerScreen() {
           <Text style={styles.logout}>Logout</Text>
         </TouchableOpacity>
       </View>
-
-      {/* ACCOUNT STATUS */}
 
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Account Status</Text>
@@ -243,8 +239,6 @@ export default function PartnerScreen() {
         )}
       </View>
 
-      {/* PARTNER INFORMATION */}
-
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Partner Information</Text>
 
@@ -257,8 +251,6 @@ export default function PartnerScreen() {
           value={partner.drivingLicense || "Not provided"}
         />
       </View>
-
-      {/* ONLINE/OFFLINE */}
 
       {partner.status === "APPROVED" && (
         <View style={styles.card}>
@@ -289,8 +281,6 @@ export default function PartnerScreen() {
         </View>
       )}
 
-      {/* RIDES */}
-
       {partner.status === "APPROVED" && (
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Available Rides</Text>
@@ -317,6 +307,7 @@ function InfoRow({ label, value }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    marginTop: 40,
     backgroundColor: "#F7F7F7",
   },
 
