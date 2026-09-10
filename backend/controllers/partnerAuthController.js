@@ -190,9 +190,6 @@ export const registerPartner = async (req, res) => {
     const { phone, otp, name, vehicleType, vehicleNumber, drivingLicense } =
       req.body;
 
-    // --------------------------------------------
-    // 1. REQUIRED FIELDS
-    // --------------------------------------------
     if (!phone || !otp || !name || !vehicleType || !vehicleNumber) {
       return res.status(400).json({
         success: false,
@@ -200,9 +197,6 @@ export const registerPartner = async (req, res) => {
       });
     }
 
-    // --------------------------------------------
-    // 2. CLEAN PHONE
-    // --------------------------------------------
     const cleanPhone = String(phone).replace(/\D/g, "");
 
     if (cleanPhone.length !== 10) {
@@ -357,14 +351,28 @@ export const registerPartner = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error(
-      "Register partner error:",
-      error.response?.data || error.message,
-    );
+    console.error("=================================");
+    console.error("REGISTER PARTNER ERROR");
+    console.error("=================================");
+
+    console.error("Message:", error.message);
+    console.error("Name:", error.name);
+    console.error("Code:", error.code);
+    console.error("Stack:", error.stack);
+
+    if (error.errors) {
+      console.error("MONGOOSE VALIDATION ERRORS:");
+
+      Object.keys(error.errors).forEach((key) => {
+        console.error(key, "=>", error.errors[key].message);
+      });
+    }
+
+    console.error("=================================");
 
     return res.status(500).json({
       success: false,
-      message: "Failed to register partner",
+      message: error.message || "Failed to register partner",
     });
   }
 };
