@@ -1,27 +1,23 @@
 import { useEffect, useState } from "react";
-
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
-  Alert,
   ActivityIndicator,
-  ScrollView,
-  RefreshControl,
+  Alert,
 } from "react-native";
 
-import { router } from "expo-router";
-
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { router } from "expo-router";
+import * as Location from "expo-location";
 
 import { ENDPOINTS } from "../constants/api";
 
-export default function PartnerScreen() {
+export default function PartnerDashboard() {
   const [partner, setPartner] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [updating, setUpdating] = useState(false);
+  const [statusLoading, setStatusLoading] = useState(false);
 
   const loadPartner = async () => {
     try {
@@ -36,28 +32,24 @@ export default function PartnerScreen() {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
         },
       });
 
       const data = await response.json();
 
-      console.log("PARTNER STATUS:", response.status);
+      console.log("PARTNER STATUS:", data);
 
-      console.log("PARTNER RESPONSE:", data);
+      if (!data.success) {
+        Alert.alert(
+          "Session Error",
+          data.message || "Unable to load partner profile.",
+        );
 
-      if (response.status === 401) {
         await AsyncStorage.removeItem("partnerToken");
-
         await AsyncStorage.removeItem("partnerData");
 
         router.replace("/login");
-
         return;
-      }
-
-      if (!response.ok || !data.success) {
-        throw new Error(data.message || "Unable to load partner");
       }
 
       setPartner(data.partner);
@@ -66,17 +58,9 @@ export default function PartnerScreen() {
     } catch (error) {
       console.error("Load partner error:", error);
 
-      // Load cached data if API fails
-      const cached = await AsyncStorage.getItem("partnerData");
-
-      if (cached) {
-        setPartner(JSON.parse(cached));
-      } else {
-        Alert.alert("Error", "Unable to load partner information.");
-      }
+      Alert.alert("Connection Error", "Unable to connect to the server.");
     } finally {
       setLoading(false);
-      setRefreshing(false);
     }
   };
 
@@ -84,68 +68,177 @@ export default function PartnerScreen() {
     loadPartner();
   }, []);
 
-  const onRefresh = () => {
-    setRefreshing(true);
-    loadPartner();
-  };
-
   const toggleOnline = async () => {
     if (!partner) return;
 
     if (partner.status !== "APPROVED") {
       Alert.alert(
         "Approval Required",
-        "Your account must be approved before you can go online.",
+        "Your partner account must be approved before going online.",
       );
-
       return;
     }
 
     try {
-      setUpdating(true);
+      setStatusLoading(true);
 
       const token = await AsyncStorage.getItem("partnerToken");
 
-      const newOnlineStatus = !partner.isOnline;
+      if (!partner.isOnline) {
+        // Request location permission
+        const { status } = await Location.requestForegroundPermissionsAsync();
 
-      const response = await fetch(ENDPOINTS.partnerStatus, {
-        method: "PUT",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          isOnline: newOnlineStatus,
-        }),
-      });
+        if (status !== "granted") {
+          Alert.alert(
+            "Location Permission Required",
+            "Women Savari needs your location to receive nearby rides.",
+          );
+          return;
+        }
 
-      const data = await response.json();
+        // Get current location
+        const location = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.High,
+        });
 
-      console.log("UPDATE PARTNER STATUS:", response.status);
+        const latitude = location.coords.latitude;
+        const longitude = location.coords.longitude;
 
-      console.log("UPDATE RESPONSE:", data);
+        console.log("PARTNER LOCATION:", {
+          latitude,
+          longitude,
+        });
 
-      if (!response.ok || !data.success) {
-        Alert.alert("Error", data.message || "Unable to update online status.");
+        // Go online + save location
+        const response = await fetch(ENDPOINTS.partnerStatus, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            isOnline: true,
+            latitude,
+            longitude,
+          }),
+        });
 
-        return;
+        const data = await response.json();
+
+        console.log("GO ONLINE RESPONSE:", data);
+
+        if (!data.success) {
+          Alert.alert(
+            "Unable to go online",
+            data.message || "Please try again.",
+          );
+          return;
+        }
+
+        setPartner(data.partner);
+
+        await AsyncStorage.setItem("partnerData", JSON.stringify(data.partner));
+
+        Alert.alert(
+          "You're Online",
+          "You can now receive nearby ride requests.",
+        );
+      } else {
+        // Go offline
+        const response = await fetch(ENDPOINTS.partnerStatus, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            isOnline: false,
+          }),
+        });
+
+        const data = await response.json();
+
+        console.log("GO OFFLINE RESPONSE:", data);
+
+        if (!data.success) {
+          Alert.alert(
+            "Unable to go offline",
+            data.message || "Please try again.",
+          );
+          return;
+        }
+
+        setPartner(data.partner);
+
+        await AsyncStorage.setItem("partnerData", JSON.stringify(data.partner));
       }
-
-      setPartner(data.partner);
-
-      await AsyncStorage.setItem("partnerData", JSON.stringify(data.partner));
     } catch (error) {
       console.error("Toggle online error:", error);
 
-      Alert.alert("Connection Error", "Unable to connect to server.");
+      Alert.alert(
+        "Location Error",
+        "Unable to get your current location. Please make sure GPS is enabled.",
+      );
     } finally {
-      setUpdating(false);
+      setStatusLoading(false);
     }
   };
 
+  //   const toggleOnline = async () => {
+  //     if (!partner) return;
+
+  //     if (partner.status !== "APPROVED") {
+  //       Alert.alert(
+  //         "Approval Required",
+  //         "Your partner account must be approved before going online.",
+  //       );
+  //       return;
+  //     }
+
+  //     try {
+  //       setStatusLoading(true);
+
+  //       const token = await AsyncStorage.getItem("partnerToken");
+
+  //       const newOnlineStatus = !partner.isOnline;
+
+  //       const response = await fetch(ENDPOINTS.partnerStatus, {
+  //         method: "PUT",
+  //         headers: {
+  //           "Content-Type": "application/json",
+  //           Authorization: `Bearer ${token}`,
+  //         },
+  //         body: JSON.stringify({
+  //           isOnline: newOnlineStatus,
+  //         }),
+  //       });
+
+  //       const data = await response.json();
+
+  //       console.log("UPDATE STATUS:", data);
+
+  //       if (!data.success) {
+  //         Alert.alert(
+  //           "Unable to update status",
+  //           data.message || "Please try again.",
+  //         );
+  //         return;
+  //       }
+
+  //       setPartner(data.partner);
+
+  //       await AsyncStorage.setItem("partnerData", JSON.stringify(data.partner));
+  //     } catch (error) {
+  //       console.error("Toggle online error:", error);
+
+  //       Alert.alert("Connection Error", "Unable to update your online status.");
+  //     } finally {
+  //       setStatusLoading(false);
+  //     }
+  //   };
+
   const logout = async () => {
     await AsyncStorage.removeItem("partnerToken");
-
     await AsyncStorage.removeItem("partnerData");
 
     router.replace("/login");
@@ -153,7 +246,7 @@ export default function PartnerScreen() {
 
   if (loading) {
     return (
-      <View style={styles.center}>
+      <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#7B1FA2" />
 
         <Text style={styles.loadingText}>Loading partner account...</Text>
@@ -163,27 +256,16 @@ export default function PartnerScreen() {
 
   if (!partner) {
     return (
-      <View style={styles.center}>
-        <Text style={styles.errorText}>Partner information not found.</Text>
-
-        <TouchableOpacity
-          style={styles.button}
-          onPress={() => router.replace("/login")}
-        >
-          <Text style={styles.buttonText}>Go to Login</Text>
-        </TouchableOpacity>
+      <View style={styles.loadingContainer}>
+        <Text style={styles.errorText}>Partner information not available.</Text>
       </View>
     );
   }
 
+  const status = partner.status;
+
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-      }
-    >
+    <View style={styles.container}>
       <View style={styles.header}>
         <View>
           <Text style={styles.brand}>WOMEN SAVARI</Text>
@@ -191,86 +273,88 @@ export default function PartnerScreen() {
           <Text style={styles.title}>Partner Dashboard</Text>
         </View>
 
-        <TouchableOpacity onPress={logout}>
-          <Text style={styles.logout}>Logout</Text>
+        <TouchableOpacity style={styles.logoutButton} onPress={logout}>
+          <Text style={styles.logoutText}>Logout</Text>
         </TouchableOpacity>
       </View>
 
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Account Status</Text>
-
-        <View style={styles.statusRow}>
-          <View
-            style={[
-              styles.statusDot,
-              partner.status === "APPROVED"
-                ? styles.approved
-                : partner.status === "REJECTED"
-                  ? styles.rejected
-                  : styles.pending,
-            ]}
-          />
-
-          <Text style={styles.status}>{partner.status}</Text>
+      <View style={styles.profileCard}>
+        <View style={styles.avatar}>
+          <Text style={styles.avatarText}>
+            {partner.user?.name?.charAt(0)?.toUpperCase() || "W"}
+          </Text>
         </View>
 
-        {partner.status === "PENDING" && (
-          <Text style={styles.description}>
-            Your partner account is waiting for admin approval.
-          </Text>
-        )}
+        <View style={styles.profileInfo}>
+          <Text style={styles.name}>{partner.user?.name || "Partner"}</Text>
 
-        {partner.status === "APPROVED" && (
-          <Text style={styles.description}>
-            Your partner account has been approved. You can now accept rides.
-          </Text>
-        )}
+          <Text style={styles.phone}>+91 {partner.user?.phone || ""}</Text>
 
-        {partner.status === "REJECTED" && (
-          <Text style={styles.description}>
-            Your partner application has been rejected. Please contact support.
+          <Text style={styles.vehicle}>
+            {partner.vehicleType?.toUpperCase()} • {partner.vehicleNumber}
           </Text>
-        )}
-
-        {partner.status === "SUSPENDED" && (
-          <Text style={styles.description}>
-            Your partner account is suspended.
-          </Text>
-        )}
+        </View>
       </View>
 
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Partner Information</Text>
+      <View style={styles.statusCard}>
+        <Text style={styles.statusLabel}>ACCOUNT STATUS</Text>
 
-        <InfoRow label="Vehicle Type" value={partner.vehicleType} />
-
-        <InfoRow label="Vehicle Number" value={partner.vehicleNumber} />
-
-        <InfoRow
-          label="Driving License"
-          value={partner.drivingLicense || "Not provided"}
-        />
+        <Text
+          style={[
+            styles.statusValue,
+            status === "APPROVED" && styles.approved,
+            status === "PENDING" && styles.pending,
+            status === "REJECTED" && styles.rejected,
+          ]}
+        >
+          {status}
+        </Text>
       </View>
 
-      {partner.status === "APPROVED" && (
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Ride Availability</Text>
+      {status === "PENDING" && (
+        <View style={styles.messageCard}>
+          <Text style={styles.messageTitle}>Application Under Review</Text>
 
-          <Text style={styles.description}>
+          <Text style={styles.messageText}>
+            Your partner registration has been submitted. Please wait for
+            approval before accepting rides.
+          </Text>
+        </View>
+      )}
+
+      {status === "REJECTED" && (
+        <View style={styles.messageCard}>
+          <Text style={styles.messageTitle}>Application Rejected</Text>
+
+          <Text style={styles.messageText}>
+            Your partner application has been rejected. Please contact Women
+            Savari support.
+          </Text>
+        </View>
+      )}
+
+      {status === "APPROVED" && (
+        <View style={styles.onlineSection}>
+          <Text style={styles.onlineTitle}>
+            {partner.isOnline ? "You are Online" : "You are Offline"}
+          </Text>
+
+          <Text style={styles.onlineSubtitle}>
             {partner.isOnline
-              ? "You are online and can receive rides."
-              : "You are offline and will not receive rides."}
+              ? "Waiting for nearby ride requests"
+              : "Go online to start receiving rides"}
           </Text>
 
           <TouchableOpacity
             style={[
               styles.onlineButton,
               partner.isOnline && styles.offlineButton,
+              statusLoading && styles.disabledButton,
             ]}
             onPress={toggleOnline}
-            disabled={updating}
+            disabled={statusLoading}
           >
-            {updating ? (
+            {statusLoading ? (
               <ActivityIndicator color="#fff" />
             ) : (
               <Text style={styles.onlineButtonText}>
@@ -281,25 +365,19 @@ export default function PartnerScreen() {
         </View>
       )}
 
-      {partner.status === "APPROVED" && (
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Available Rides</Text>
+      {partner.currentLocation?.latitude && (
+        <View style={styles.locationCard}>
+          <Text style={styles.locationTitle}>Current Location</Text>
 
-          <Text style={styles.description}>
-            Available rides will appear here when you are online.
+          <Text style={styles.locationText}>
+            Latitude: {partner.currentLocation.latitude}
+          </Text>
+
+          <Text style={styles.locationText}>
+            Longitude: {partner.currentLocation.longitude}
           </Text>
         </View>
       )}
-    </ScrollView>
-  );
-}
-
-function InfoRow({ label, value }) {
-  return (
-    <View style={styles.infoRow}>
-      <Text style={styles.infoLabel}>{label}</Text>
-
-      <Text style={styles.infoValue}>{value}</Text>
     </View>
   );
 }
@@ -307,32 +385,26 @@ function InfoRow({ label, value }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    marginTop: 40,
-    backgroundColor: "#F7F7F7",
+    backgroundColor: "#F7F7F8",
+    paddingHorizontal: 20,
+    paddingTop: 55,
   },
 
-  content: {
-    padding: 20,
-    paddingBottom: 40,
-  },
-
-  center: {
+  loadingContainer: {
     flex: 1,
-    backgroundColor: "#fff",
     alignItems: "center",
     justifyContent: "center",
-    padding: 25,
+    backgroundColor: "#fff",
   },
 
   loadingText: {
-    marginTop: 15,
+    marginTop: 12,
     color: "#777",
   },
 
   errorText: {
-    color: "#555",
+    color: "#777",
     fontSize: 16,
-    marginBottom: 20,
   },
 
   header: {
@@ -350,113 +422,176 @@ const styles = StyleSheet.create({
   },
 
   title: {
-    fontSize: 25,
+    marginTop: 4,
+    fontSize: 24,
     fontWeight: "800",
     color: "#191919",
-    marginTop: 5,
   },
 
-  logout: {
+  logoutButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+
+  logoutText: {
     color: "#7B1FA2",
     fontWeight: "700",
   },
 
-  card: {
+  profileCard: {
     backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
-  },
-
-  cardTitle: {
-    fontSize: 18,
-    fontWeight: "800",
-    color: "#222",
+    borderRadius: 18,
+    padding: 18,
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 15,
   },
 
-  statusRow: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-
-  statusDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    marginRight: 10,
-  },
-
-  approved: {
-    backgroundColor: "#2E7D32",
-  },
-
-  pending: {
-    backgroundColor: "#F9A825",
-  },
-
-  rejected: {
-    backgroundColor: "#D32F2F",
-  },
-
-  status: {
-    fontSize: 18,
-    fontWeight: "800",
-  },
-
-  description: {
-    marginTop: 10,
-    color: "#777",
-    fontSize: 14,
-    lineHeight: 21,
-  },
-
-  infoRow: {
-    paddingVertical: 11,
-    borderBottomWidth: 1,
-    borderBottomColor: "#eee",
-  },
-
-  infoLabel: {
-    color: "#888",
-    fontSize: 12,
-    marginBottom: 4,
-  },
-
-  infoValue: {
-    color: "#222",
-    fontSize: 16,
-    fontWeight: "700",
-  },
-
-  onlineButton: {
-    height: 54,
-    borderRadius: 12,
+  avatar: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
     backgroundColor: "#7B1FA2",
     alignItems: "center",
     justifyContent: "center",
-    marginTop: 18,
+    marginRight: 15,
+  },
+
+  avatarText: {
+    color: "#fff",
+    fontSize: 25,
+    fontWeight: "900",
+  },
+
+  profileInfo: {
+    flex: 1,
+  },
+
+  name: {
+    fontSize: 19,
+    fontWeight: "800",
+    color: "#222",
+  },
+
+  phone: {
+    marginTop: 3,
+    color: "#777",
+  },
+
+  vehicle: {
+    marginTop: 7,
+    color: "#555",
+    fontWeight: "700",
+  },
+
+  statusCard: {
+    backgroundColor: "#fff",
+    borderRadius: 18,
+    padding: 18,
+    marginBottom: 15,
+  },
+
+  statusLabel: {
+    color: "#999",
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 1,
+  },
+
+  statusValue: {
+    marginTop: 6,
+    fontSize: 22,
+    fontWeight: "900",
+  },
+
+  approved: {
+    color: "#16803C",
+  },
+
+  pending: {
+    color: "#D97706",
+  },
+
+  rejected: {
+    color: "#C62828",
+  },
+
+  messageCard: {
+    backgroundColor: "#fff",
+    borderRadius: 18,
+    padding: 20,
+  },
+
+  messageTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#222",
+  },
+
+  messageText: {
+    marginTop: 8,
+    color: "#777",
+    lineHeight: 21,
+  },
+
+  onlineSection: {
+    backgroundColor: "#fff",
+    borderRadius: 20,
+    padding: 22,
+    alignItems: "center",
+  },
+
+  onlineTitle: {
+    fontSize: 22,
+    fontWeight: "800",
+    color: "#222",
+  },
+
+  onlineSubtitle: {
+    marginTop: 7,
+    textAlign: "center",
+    color: "#777",
+  },
+
+  onlineButton: {
+    width: "100%",
+    height: 58,
+    borderRadius: 15,
+    backgroundColor: "#7B1FA2",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 22,
   },
 
   offlineButton: {
-    backgroundColor: "#555",
+    backgroundColor: "#444",
+  },
+
+  disabledButton: {
+    opacity: 0.7,
   },
 
   onlineButtonText: {
     color: "#fff",
+    fontSize: 17,
+    fontWeight: "900",
+  },
+
+  locationCard: {
+    backgroundColor: "#fff",
+    borderRadius: 18,
+    padding: 18,
+    marginTop: 15,
+  },
+
+  locationTitle: {
     fontSize: 16,
     fontWeight: "800",
+    marginBottom: 8,
   },
 
-  button: {
-    backgroundColor: "#7B1FA2",
-    paddingHorizontal: 25,
-    paddingVertical: 14,
-    borderRadius: 12,
-  },
-
-  buttonText: {
-    color: "#fff",
-    fontWeight: "800",
+  locationText: {
+    color: "#777",
+    marginTop: 3,
   },
 });

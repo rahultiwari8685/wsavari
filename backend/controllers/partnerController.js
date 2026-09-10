@@ -60,11 +60,49 @@ export const updatePartnerStatus = async (req, res) => {
   }
 };
 
+// export const getPartnerStatus = async (req, res) => {
+//   try {
+//     const partner = await Partner.findById(req.user.partnerId).populate(
+//       "user",
+//       "name phone",
+//     );
+
+//     if (!partner) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "Partner not found",
+//       });
+//     }
+
+//     return res.json({
+//       success: true,
+
+//       partner: {
+//         _id: partner._id,
+//         user: partner.user,
+//         vehicleType: partner.vehicleType,
+//         vehicleNumber: partner.vehicleNumber,
+//         drivingLicense: partner.drivingLicense,
+//         status: partner.status,
+//         isOnline: partner.isOnline,
+//         currentLocation: partner.currentLocation,
+//       },
+//     });
+//   } catch (error) {
+//     console.error("Get partner status error:", error);
+
+//     return res.status(500).json({
+//       success: false,
+//       message: "Failed to get partner status",
+//     });
+//   }
+// };
+
 export const getPartnerStatus = async (req, res) => {
   try {
-    const partner = await Partner.findById(req.user.partnerId).populate(
+    const partner = await Partner.findById(req.partner._id).populate(
       "user",
-      "name phone",
+      "name phone role isActive isVerified",
     );
 
     if (!partner) {
@@ -76,7 +114,6 @@ export const getPartnerStatus = async (req, res) => {
 
     return res.json({
       success: true,
-
       partner: {
         _id: partner._id,
         user: partner.user,
