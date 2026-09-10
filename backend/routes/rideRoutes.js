@@ -6,52 +6,35 @@ import {
   cancelRide,
   getAvailableRides,
   acceptRide,
+  markRideArriving,
   startRide,
   completeRide,
 } from "../controllers/rideController.js";
 
 import { protect } from "../middleware/authMiddleware.js";
+
 import { partnerAuth } from "../middleware/partnerAuth.js";
 
 const router = express.Router();
 
-/*
-|--------------------------------------------------------------------------
-| CUSTOMER
-|--------------------------------------------------------------------------
-*/
+// CUSTOMER
 
-// Create ride
 router.post("/", protect, createRide);
 
-// Cancel ride
 router.put("/:id/cancel", protect, cancelRide);
 
-/*
-|--------------------------------------------------------------------------
-| PARTNER
-|--------------------------------------------------------------------------
-*/
+router.get("/:id", protect, getRide);
 
-// Available rides
+// PARTNER
+
 router.get("/available", partnerAuth, getAvailableRides);
 
-// Accept ride
 router.post("/:id/accept", partnerAuth, acceptRide);
 
-// Start ride
+router.post("/:id/arriving", partnerAuth, markRideArriving);
+
 router.post("/:id/start", partnerAuth, startRide);
 
-// Complete ride
 router.post("/:id/complete", partnerAuth, completeRide);
-
-/*
-|--------------------------------------------------------------------------
-| COMMON
-|--------------------------------------------------------------------------
-*/
-
-// Get single ride
-router.get("/:id", protect, getRide);
 
 export default router;

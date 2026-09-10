@@ -232,12 +232,56 @@ export const acceptRide = async (req, res) => {
   }
 };
 
-export const startRide = async (req, res) => {
+export const markRideArriving = async (req, res) => {
   try {
     const ride = await Ride.findOne({
       _id: req.params.id,
       partner: req.partner._id,
       status: "ACCEPTED",
+    });
+
+    if (!ride) {
+      return res.status(404).json({
+        success: false,
+        message: "Accepted ride not found",
+      });
+    }
+
+    ride.status = "ARRIVING";
+
+    await ride.save();
+
+    const updatedRide = await Ride.findById(ride._id)
+      .populate("customer", "name phone profilePhoto")
+      .populate({
+        path: "partner",
+        populate: {
+          path: "user",
+          select: "name phone profilePhoto",
+        },
+      });
+
+    return res.json({
+      success: true,
+      message: "Partner is arriving",
+      ride: updatedRide,
+    });
+  } catch (error) {
+    console.error("Mark ride arriving error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to update ride status",
+    });
+  }
+};
+
+export const startRide = async (req, res) => {
+  try {
+    const ride = await Ride.findOne({
+      _id: req.params.id,
+      partner: req.partner._id,
+      status: "ARRIVING",
     });
 
     if (!ride) {
