@@ -89,27 +89,10 @@ export default function PartnerRegisterScreen() {
           vehicleNumber: vehicleNumber.trim().toUpperCase(),
           drivingLicense: drivingLicense.trim().toUpperCase(),
         }),
-
-        // body: JSON.stringify({
-        //   phone: cleanPhone,
-
-        //   // IMPORTANT
-        //   otp: cleanOtp,
-
-        //   name: name.trim(),
-
-        //   vehicleType: vehicleType.trim(),
-
-        //   vehicleNumber: vehicleNumber.trim().toUpperCase(),
-
-        //   drivingLicense: drivingLicense.trim().toUpperCase(),
-        // }),
       });
 
       console.log("REGISTER STATUS:", response.status);
 
-      // पहले text पढ़ेंगे ताकि HTML response आने पर
-      // JSON Parse Error न हो
       const responseText = await response.text();
 
       console.log("REGISTER RAW RESPONSE:", responseText);
@@ -128,10 +111,6 @@ export default function PartnerRegisterScreen() {
 
       console.log("REGISTER RESPONSE:", data);
 
-      // ==========================================
-      // BACKEND ERROR
-      // ==========================================
-
       if (!data.success) {
         Alert.alert(
           "Registration Failed",
@@ -140,10 +119,6 @@ export default function PartnerRegisterScreen() {
 
         return;
       }
-
-      // ==========================================
-      // TOKEN CHECK
-      // ==========================================
 
       if (!data.token) {
         Alert.alert(
@@ -154,23 +129,11 @@ export default function PartnerRegisterScreen() {
         return;
       }
 
-      // ==========================================
-      // SAVE TOKEN
-      // ==========================================
-
       await AsyncStorage.setItem("partnerToken", data.token);
-
-      // ==========================================
-      // SAVE PARTNER DATA
-      // ==========================================
 
       if (data.partner) {
         await AsyncStorage.setItem("partnerData", JSON.stringify(data.partner));
       }
-
-      // ==========================================
-      // SUCCESS
-      // ==========================================
 
       Alert.alert(
         "Registration Successful",

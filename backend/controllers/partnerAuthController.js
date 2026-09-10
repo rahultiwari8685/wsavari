@@ -206,9 +206,6 @@ export const registerPartner = async (req, res) => {
       });
     }
 
-    // --------------------------------------------
-    // 3. CLEAN INPUT
-    // --------------------------------------------
     const cleanName = String(name).trim();
     const cleanVehicleType = String(vehicleType).trim().toLowerCase();
 
@@ -248,9 +245,6 @@ export const registerPartner = async (req, res) => {
       });
     }
 
-    // --------------------------------------------
-    // 4. DEVELOPMENT OTP
-    // --------------------------------------------
     if (String(otp).trim() !== "123456") {
       return res.status(400).json({
         success: false,
@@ -258,16 +252,10 @@ export const registerPartner = async (req, res) => {
       });
     }
 
-    // --------------------------------------------
-    // 5. CHECK IF USER ALREADY EXISTS
-    // --------------------------------------------
     let user = await User.findOne({
       phone: cleanPhone,
     });
 
-    // --------------------------------------------
-    // 6. CREATE USER IF NOT EXISTS
-    // --------------------------------------------
     if (!user) {
       user = await User.create({
         phone: cleanPhone,
